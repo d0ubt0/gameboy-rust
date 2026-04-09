@@ -1,8 +1,10 @@
 pub mod mbc;
 
 use crate::mmu::Memory;
-use mbc::{Mbc, Mbc1, NoMbc};
+use mbc::{Mbc, Mbc1, Mbc3, NoMbc};
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 /// ROM Header offsets
@@ -30,7 +32,8 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    /// Load a ROM from a file path
+    /// Load a ROM from a file path (not available on WASM)
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, String> {
         let rom_data = fs::read(path.as_ref())
             .map_err(|e| format!("Failed to read ROM file '{}': {}", path.as_ref().display(), e))?;
@@ -64,6 +67,10 @@ impl Cartridge {
             0x01 | 0x02 | 0x03 => {
                 // MBC1, MBC1+RAM, MBC1+RAM+BATTERY
                 Box::new(Mbc1::new(rom, header.ram_size))
+            }
+            0x0F..=0x13 => {
+                // MBC3, MBC3+RAM, etc.
+                Box::new(Mbc3::new(rom, header.ram_size))
             }
             other => {
                 log::warn!("Unsupported cartridge type: 0x{:02X}, falling back to NoMbc", other);

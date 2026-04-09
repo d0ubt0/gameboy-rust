@@ -7,9 +7,9 @@ use winit::window::{Window, WindowId};
 use pixels::{Pixels, SurfaceTexture};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
-use gameboy_rust::emulator::GameBoy;
-use gameboy_rust::joypad::Button;
-use gameboy_rust::ppu::{SCREEN_WIDTH, SCREEN_HEIGHT};
+use gameboy_core::emulator::GameBoy;
+use gameboy_core::joypad::Button;
+use gameboy_core::ppu::{SCREEN_WIDTH, SCREEN_HEIGHT};
 
 // Scale factor for the window
 const SCALE: u32 = 4;

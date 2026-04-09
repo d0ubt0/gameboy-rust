@@ -4,6 +4,7 @@ use crate::cartridge::Cartridge;
 use crate::ppu::SCREEN_WIDTH;
 use crate::ppu::SCREEN_HEIGHT;
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 /// Number of CPU cycles per frame (~70224 cycles at 4.194304 MHz ≈ 59.73 fps)
@@ -22,14 +23,22 @@ impl GameBoy {
         }
     }
 
-    /// Load a ROM from a file path
+    /// Load a ROM from a file path (not available on WASM)
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn load_rom_file<P: AsRef<Path>>(&mut self, path: P) -> Result<(), String> {
         let cartridge = Cartridge::from_file(path)?;
         self.bus.cartridge = Some(cartridge);
         Ok(())
     }
 
-    /// Load a ROM from raw bytes (for testing)
+    /// Load a ROM from raw bytes with header validation
+    pub fn load_rom_bytes(&mut self, rom: Vec<u8>) -> Result<(), String> {
+        let cartridge = Cartridge::from_bytes(rom)?;
+        self.bus.cartridge = Some(cartridge);
+        Ok(())
+    }
+
+    /// Load a ROM from raw bytes without validation (for testing)
     pub fn load_rom(&mut self, rom: Vec<u8>) {
         self.bus.cartridge = Some(Cartridge::new(rom));
     }

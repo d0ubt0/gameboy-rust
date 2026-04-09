@@ -619,14 +619,19 @@ mod tests {
     fn test_ppu_full_frame() {
         let mut ppu = Ppu::new();
 
-        // Run through all 154 lines
+        // Run through 144 visible scanlines
         for _ in 0..144 {
-            ppu.step(SCANLINE_CYCLES);
+            for _ in 0..(SCANLINE_CYCLES / 4) {
+                ppu.step(4);
+            }
         }
         assert_eq!(ppu.mode, PpuMode::VBlank);
 
+        // Run through 10 VBlank scanlines
         for _ in 144..154 {
-            ppu.step(SCANLINE_CYCLES);
+            for _ in 0..(SCANLINE_CYCLES / 4) {
+                ppu.step(4);
+            }
         }
         assert_eq!(ppu.mode, PpuMode::OamScan);
         assert_eq!(ppu.ly, 0);

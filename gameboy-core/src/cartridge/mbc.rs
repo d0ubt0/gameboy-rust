@@ -168,6 +168,110 @@ impl Mbc for Mbc1 {
     }
 }
 
+// ============================================================================
+// MBC3 — Supports up to 2MB ROM and 32KB RAM + Timer (RTC)
+// ============================================================================
+
+pub struct Mbc3 {
+    rom: Vec<u8>,
+    ram: Vec<u8>,
+    ram_enabled: bool,
+    rom_bank: u8,
+    ram_bank: u8,
+    // Real Time Clock (RTC) registers (simplified: just placeholders)
+    rtc_registers: [u8; 5],
+}
+
+impl Mbc3 {
+    pub fn new(rom: Vec<u8>, ram_size: usize) -> Self {
+        Self {
+            rom,
+            ram: vec![0; ram_size],
+            ram_enabled: false,
+            rom_bank: 1,
+            ram_bank: 0,
+            rtc_registers: [0; 5],
+        }
+    }
+}
+
+impl Mbc for Mbc3 {
+    fn read(&self, address: u16) -> u8 {
+        match address {
+            0x0000..=0x3FFF => {
+                // Fixed ROM Bank 0
+                self.rom.get(address as usize).cloned().unwrap_or(0xFF)
+            }
+            0x4000..=0x7FFF => {
+                // Switchable ROM Bank 01-7F
+                let offset = (self.rom_bank as usize) * 0x4000 + (address as usize - 0x4000);
+                self.rom.get(offset).cloned().unwrap_or(0xFF)
+            }
+            0xA000..=0xBFFF => {
+                if !self.ram_enabled {
+                    return 0xFF;
+                }
+                match self.ram_bank {
+                    0x00..=0x03 => {
+                        // RAM Bank 00-03
+                        let offset = (self.ram_bank as usize) * 0x2000 + (address as usize - 0xA000);
+                        self.ram.get(offset).cloned().unwrap_or(0xFF)
+                    }
+                    0x08..=0x0C => {
+                        // RTC Register
+                        self.rtc_registers[(self.ram_bank - 0x08) as usize]
+                    }
+                    _ => 0xFF,
+                }
+            }
+            _ => 0xFF,
+        }
+    }
+
+    fn write(&mut self, address: u16, value: u8) {
+        match address {
+            0x0000..=0x1FFF => {
+                // RAM and Timer Enable
+                self.ram_enabled = (value & 0x0F) == 0x0A;
+            }
+            0x2000..=0x3FFF => {
+                // ROM Bank Number (7 bits: 0-127)
+                let mut bank = value & 0x7F;
+                if bank == 0 {
+                    bank = 1;
+                }
+                self.rom_bank = bank;
+            }
+            0x4000..=0x5FFF => {
+                // RAM Bank Number or RTC Register Select
+                self.ram_bank = value;
+            }
+            0x6000..=0x7FFF => {
+                // Latch Clock Data (writing 0 then 1 latches)
+                // Simplified: do nothing for now
+            }
+            0xA000..=0xBFFF => {
+                if !self.ram_enabled {
+                    return;
+                }
+                match self.ram_bank {
+                    0x00..=0x03 => {
+                        let offset = (self.ram_bank as usize) * 0x2000 + (address as usize - 0xA000);
+                        if offset < self.ram.len() {
+                            self.ram[offset] = value;
+                        }
+                    }
+                    0x08..=0x0C => {
+                        self.rtc_registers[(self.ram_bank - 0x08) as usize] = value;
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
