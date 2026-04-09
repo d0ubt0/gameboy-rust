@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Game Boy emulator running in the browser via WebAssembly — built with Rust.">
+    <title>Game Boy — Web Emulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-brand">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <rect x="2" y="4" width="24" height="20" rx="3" stroke="currentColor" stroke-width="2"/>
+                        <rect x="6" y="7" width="12" height="10" rx="1.5" fill="currentColor" opacity="0.3"/>
+                        <rect x="6" y="7" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                        <circle cx="21" cy="14" r="2" fill="currentColor"/>
+                        <circle cx="21" cy="18" r="1.2" fill="currentColor" opacity="0.5"/>
+                    </svg>
+                </div>
+                <h1>Game Boy <span class="accent">Web</span></h1>
+            </div>
+            <div class="header-meta" id="rom-info">
+                <span class="badge">No ROM loaded</span>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="main">
+            <!-- Game Boy Device -->
+            <div class="gameboy-device">
+                <!-- Device shell -->
+                <div class="gameboy-shell">
+                    <!-- Top section with brand -->
+                    <div class="gameboy-top">
+                        <div class="gameboy-brand">
+                            <span class="brand-nintendo">Nintendo</span>
+                            <span class="brand-gameboy">GAME BOY</span>
+                        </div>
+                        <div class="power-led" id="power-led"></div>
+                    </div>
+
+                    <!-- Screen section -->
+                    <div class="gameboy-screen-area">
+                        <div class="screen-bezel">
+                            <div class="screen-label">DOT MATRIX WITH STEREO SOUND</div>
+                            <div class="screen-container">
+                                <canvas id="screen" width="160" height="144"></canvas>
+                                <div class="screen-overlay" id="screen-overlay">
+                                    <div class="overlay-content">
+                                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" class="overlay-icon">
+                                            <rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2.5"/>
+                                            <rect x="10" y="12" width="20" height="16" rx="2" fill="currentColor" opacity="0.15"/>
+                                            <rect x="10" y="12" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+                                            <circle cx="36" cy="22" r="3" fill="currentColor" opacity="0.6"/>
+                                            <circle cx="36" cy="30" r="2" fill="currentColor" opacity="0.4"/>
+                                        </svg>
+                                        <p>Load a ROM</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls section -->
+                    <div class="gameboy-controls">
+                        <!-- Left side: D-pad -->
+                        <div class="dpad-container">
+                            <div class="dpad">
+                                <div class="dpad-up"></div>
+                                <div class="dpad-down"></div>
+                                <div class="dpad-left"></div>
+                                <div class="dpad-right"></div>
+                                <div class="dpad-center"></div>
+                            </div>
+                        </div>
+
+                        <!-- Center: Start/Select -->
+                        <div class="center-controls">
+                            <div class="select-btn" title="Select (Backspace)">
+                                <span>SELECT</span>
+                            </div>
+                            <div class="start-btn" title="Start (Enter)">
+                                <span>START</span>
+                            </div>
+                        </div>
+
+                        <!-- Right side: A/B buttons -->
+                        <div class="buttons-container">
+                            <button class="action-btn btn-b" data-btn="4" title="B (Z)">
+                                <span>B</span>
+                            </button>
+                            <button class="action-btn btn-a" data-btn="5" title="A (X)">
+                                <span>A</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bottom section: Speaker -->
+                    <div class="gameboy-bottom">
+                        <div class="speaker-grille">
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                            <div class="grille-hole"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls panel -->
+            <aside class="controls-panel">
+                <!-- ROM loader -->
+                <section class="panel-section">
+                    <h2 class="section-title">Cartridge</h2>
+                    <label class="file-input-label" for="rom-input" id="rom-label">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span>Choose .gb ROM…</span>
+                    </label>
+                    <input type="file" id="rom-input" accept=".gb,.gbc,.bin,.rom" hidden>
+                </section>
+
+                <!-- Status -->
+                <section class="panel-section">
+                    <h2 class="section-title">Status</h2>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <span class="status-label">FPS</span>
+                            <span class="status-value" id="fps-display">—</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Audio</span>
+                            <span class="status-value" id="audio-status">Off</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Controls reference -->
+                <section class="panel-section">
+                    <h2 class="section-title">Controls</h2>
+                    <div class="controls-grid">
+                        <div class="control-row">
+                            <kbd>←↑↓→</kbd>
+                            <span>D-Pad</span>
+                        </div>
+                        <div class="control-row">
+                            <kbd>X</kbd>
+                            <span>A Button</span>
+                        </div>
+                        <div class="control-row">
+                            <kbd>Z</kbd>
+                            <span>B Button</span>
+                        </div>
+                        <div class="control-row">
+                            <kbd>Enter</kbd>
+                            <span>Start</span>
+                        </div>
+                        <div class="control-row">
+                            <kbd>Backspace</kbd>
+                            <span>Select</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Audio unlock notice -->
+                <div class="audio-notice" id="audio-notice">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 10.5a.75.75 0 110-1.5.75.75 0 010 1.5zM8.75 7.5a.75.75 0 01-1.5 0V4.75a.75.75 0 011.5 0V7.5z" fill="currentColor"/>
+                    </svg>
+                    <span>Click anywhere to enable audio</span>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>
