@@ -1,0 +1,15 @@
+{
+  "name": "gameboy-web",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "gameboy_web_bg.wasm",
+    "gameboy_web.js",
+    "gameboy_web.d.ts"
+  ],
+  "main": "gameboy_web.js",
+  "types": "gameboy_web.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
